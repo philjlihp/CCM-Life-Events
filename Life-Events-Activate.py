@@ -6,7 +6,6 @@ import subprocess
 import psutil
 import sys
 import webbrowser
-import threading
 from urllib.parse import quote
 from datetime import datetime, date
 import tkinter as tk
@@ -22,7 +21,10 @@ def is_valid_ip(ip):
 
 class LifeEventsActivationApp:
     def __init__(self, force_activate=False, force_buttons=False, force_vlc=None):
-        self.config_folder = os.path.join(os.getenv("APPDATA"), "CCM")
+        appdata = os.getenv("APPDATA")
+        if not appdata:
+            appdata = os.path.join(os.path.expanduser("~"), ".config")
+        self.config_folder = os.path.join(appdata, "CCM")
         self.config_file = os.path.join(self.config_folder, "life-events.ini")
         self.config = configparser.ConfigParser()
 
@@ -429,7 +431,7 @@ Config Path:
     def refresh_json(self):
         prev = self.date_var.get()
         new_data = self.fetch_json(self.json_path)
-        if new_data:
+        if new_data is not None:
             self.data = new_data
             opts = sorted(self.data.keys(), key=lambda x: datetime.strptime(x,'%d/%m/%Y'))
             self.date_dropdown['values'] = opts
@@ -450,7 +452,10 @@ Config Path:
         self.feedback_label.config(text=f"Life Event for {date_str} activated!", foreground="blue")
         # Launch buttons after activation if requested via -b or settings
         if self.force_buttons or self.auto_launch_buttons:
-            threading.Timer(1.5, self.launch_buttons).start()
+            if self.root:
+                self.root.after(1500, self.launch_buttons)
+            else:
+                self.launch_buttons()
 
     # --- VLC ---
     def is_vlc_running(self):
@@ -501,7 +506,10 @@ Config Path:
 
         # Always launch buttons if -b is passed, regardless of activation
         if self.force_buttons:
-            threading.Timer(1.5, self.launch_buttons).start()
+            if self.root:
+                self.root.after(1500, self.launch_buttons)
+            else:
+                self.launch_buttons()
 
         self.root.mainloop()
 
